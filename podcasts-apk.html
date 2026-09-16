@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lynxos Podcasts</title>
+<style>
+  :root{
+    --gold:#FFD700; --gold-dim:#b89b00; --bg:#000000; --card:#141414;
+    --card2:#1e1e1e; --text:#ffffff; --muted:#c9c9c9;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:18px; line-height:1.45; padding-bottom:110px;
+  }
+  header{
+    background:#0d0d0d; border-bottom:2px solid var(--gold);
+    padding:14px 16px; position:sticky; top:0; z-index:20;
+  }
+  header h1{ margin:0; font-size:24px; color:var(--gold); letter-spacing:1px; }
+  nav.tabs{ display:flex; gap:8px; padding:10px 12px; background:#0d0d0d; position:sticky; top:61px; z-index:20; }
+  nav.tabs button{
+    flex:1; min-height:56px; font-size:18px; font-weight:700;
+    background:var(--card); color:var(--text);
+    border:2px solid #333; border-radius:12px; cursor:pointer;
+  }
+  nav.tabs button[aria-selected="true"]{
+    background:var(--gold); color:#000; border-color:var(--gold);
+  }
+  main{ padding:12px; max-width:720px; margin:0 auto; }
+  section.tabpane{ display:none; }
+  section.tabpane.active{ display:block; }
+  .searchrow{ display:flex; gap:8px; margin-bottom:12px; }
+  .searchrow input{
+    flex:1; min-height:56px; font-size:18px; padding:0 14px;
+    background:var(--card); color:var(--text);
+    border:2px solid #444; border-radius:12px;
+  }
+  .searchrow input:focus{ border-color:var(--gold); outline:none; }
+  button.gold{
+    min-height:56px; padding:0 20px; font-size:18px; font-weight:700;
+    background:var(--gold); color:#000; border:none; border-radius:12px; cursor:pointer;
+  }
+  button.ghost{
+    min-height:52px; padding:0 16px; font-size:17px;
+    background:var(--card2); color:var(--gold);
+    border:2px solid var(--gold-dim); border-radius:12px; cursor:pointer;
+  }
+  .card{
+    display:flex; gap:12px; align-items:center;
+    background:var(--card); border:1px solid #2c2c2c; border-radius:14px;
+    padding:12px; margin-bottom:12px;
+  }
+  .card img{ width:84px; height:84px; border-radius:10px; flex-shrink:0; background:#222; }
+  .card .info{ flex:1; min-width:0; }
+  .card .info .t{ font-weight:700; font-size:19px; }
+  .card .info .s{ color:var(--muted); font-size:15px; margin-top:2px; }
+  .card .actions{ display:flex; flex-direction:column; gap:8px; }
+  .ep{
+    background:var(--card); border:1px solid #2c2c2c; border-radius:14px;
+    padding:14px; margin-bottom:12px;
+  }
+  .ep .t{ font-weight:700; font-size:18px; }
+  .ep .m{ color:var(--muted); font-size:15px; margin:4px 0 10px; }
+  .ep .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .showhead{ display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .showhead img{ width:110px; height:110px; border-radius:12px; background:#222; }
+  .showhead .t{ font-size:22px; font-weight:800; color:var(--gold); }
+  .showhead .s{ color:var(--muted); font-size:15px; }
+  #miniplayer{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    background:#0d0d0d; border-top:2px solid var(--gold);
+    padding:10px 12px; display:none; align-items:center; gap:10px;
+  }
+  #miniplayer.show{ display:flex; }
+  #miniplayer .mt{ flex:1; min-width:0; }
+  #miniplayer .mt .t{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #miniplayer .mt .s{ color:var(--muted); font-size:14px; }
+  #miniplayer button{
+    min-width:56px; min-height:56px; border-radius:50%;
+    background:var(--gold); color:#000; border:none; font-size:22px; cursor:pointer;
+  }
+  .playerbox{
+    background:var(--card); border:2px solid var(--gold-dim); border-radius:16px;
+    padding:18px; text-align:center;
+  }
+  .playerbox img{ width:170px; height:170px; border-radius:14px; background:#222; }
+  .playerbox .t{ font-size:22px; font-weight:800; margin:12px 0 4px; }
+  .playerbox .s{ color:var(--muted); margin-bottom:12px; }
+  .transport{ display:flex; justify-content:center; align-items:center; gap:14px; margin:14px 0; }
+  .transport button{
+    min-width:64px; min-height:64px; border-radius:50%; font-size:24px;
+    background:var(--card2); color:var(--gold); border:2px solid var(--gold-dim); cursor:pointer;
+  }
+  .transport button.big{
+    min-width:84px; min-height:84px; font-size:34px;
+    background:var(--gold); color:#000; border:none;
+  }
+  input[type=range]{ width:100%; accent-color:var(--gold); height:40px; }
+  .timerow{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .timerow button{
+    min-height:48px; padding:0 14px; font-size:16px; border-radius:10px;
+    background:var(--card2); color:var(--text); border:2px solid #444; cursor:pointer;
+  }
+  .timerow button[aria-pressed="true"]{ border-color:var(--gold); color:var(--gold); }
+  /* Metal-Radio-style choices: pill chips + square artwork card grid */
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 12px 0; }
+  .chip-row .chip{
+    min-height:52px; padding:6px 18px; border-radius:999px; font-size:17px; font-weight:700;
+    background:var(--card2); color:var(--text); border:2px solid #444; cursor:pointer;
+  }
+  .chip-row .chip[aria-pressed="true"]{ background:var(--gold); color:#000; border-color:var(--gold); }
+  ul.pod-grid{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+  li.pod-card{ position:relative; background:#111; border:2px solid #444; border-radius:14px; overflow:hidden; }
+  li.pod-card .card-main{
+    display:block; width:100%; padding:0; border:none; border-radius:0;
+    background:#111; color:#fff; text-align:center; cursor:pointer;
+  }
+  li.pod-card .art{ display:block; width:100%; aspect-ratio:1; background:#222; overflow:hidden; }
+  li.pod-card .art img{ width:100%; height:100%; object-fit:cover; display:block; }
+  li.pod-card .card-name{ display:block; font-size:16px; font-weight:bold; padding:8px 8px 0 8px; }
+  li.pod-card .card-sub{ display:block; font-size:13px; font-weight:normal; color:var(--gold); padding:0 8px 10px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  li.pod-card .save-btn{
+    position:absolute; top:6px; right:6px; width:52px; height:52px; padding:0;
+    font-size:24px; font-weight:bold; border-radius:50%;
+    background:rgba(0,0,0,0.72); color:var(--gold); border:2px solid var(--gold-dim); cursor:pointer;
+  }
+  li.pod-card .save-btn[aria-pressed="true"]{ background:var(--gold); color:#000; }
+  .empty{ text-align:center; color:var(--muted); padding:40px 20px; }
+  .err{ background:#2a0a0a; border:1px solid #a33; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .backrow{ margin-bottom:12px; }
+  .sr-only{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+  .voicerow{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:14px 0; }
+  .voicerow .lab{ font-size:17px; }
+</style>
+</head>
+<body>
+<div id="podcast-app">
+  <header><h1>🎙️ Lynxos Podcasts</h1></header>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-tab="browse" aria-label="Browse podcasts">Browse</button>
+    <button role="tab" aria-selected="false" data-tab="search" aria-label="Search podcasts">Search</button>
+    <button role="tab" aria-selected="false" data-tab="subs" aria-label="My subscribed podcasts">My Podcasts</button>
+    <button role="tab" aria-selected="false" data-tab="player" aria-label="Now playing">Now Playing</button>
+  </nav>
+  <main>
+    <section class="tabpane active" id="pane-browse" role="tabpanel" aria-label="Browse">
+      <div class="chip-row" id="catchips" role="group" aria-label="Categories"></div>
+      <ul class="pod-grid" id="browse" aria-live="polite"></ul>
+    </section>
+    <section class="tabpane" id="pane-search" role="tabpanel" aria-label="Search">
+      <div class="searchrow">
+        <input id="q" type="search" placeholder="Search podcasts…" aria-label="Search podcasts" autocomplete="off">
+        <button class="gold" id="btn-search" aria-label="Search">Go</button>
+      </div>
+      <div id="results" aria-live="polite"></div>
+    </section>
+    <section class="tabpane" id="pane-subs" role="tabpanel" aria-label="My podcasts">
+      <div class="voicerow">
+        <span class="lab" id="alerts-lab">New episode alerts</span>
+        <button class="ghost" id="btn-alerts" aria-pressed="false" aria-labelledby="alerts-lab">Off</button>
+      </div>
+      <div id="neweps"></div>
+      <div id="subs"></div>
+    </section>
+    <section class="tabpane" id="pane-show" role="tabpanel" aria-label="Episodes">
+      <div class="backrow"><button class="ghost" id="btn-back" aria-label="Back">← Back</button></div>
+      <div id="show"></div>
+    </section>
+    <section class="tabpane" id="pane-player" role="tabpanel" aria-label="Now playing">
+      <div id="nowplaying"></div>
+      <div class="voicerow">
+        <span class="lab" id="voice-lab">Voice announcements</span>
+        <button class="ghost" id="btn-voice" aria-pressed="true" aria-labelledby="voice-lab">On</button>
+      </div>
+      <div class="voicerow">
+        <span class="lab" id="batt-lab">Battery saver can stop playback with the screen off</span>
+        <button class="ghost" id="btn-batt" aria-labelledby="batt-lab">Fix it</button>
+      </div>
+    </section>
+  </main>
+  <div id="miniplayer" role="region" aria-label="Mini player">
+    <div class="mt"><div class="t" id="mp-title">Nothing playing</div><div class="s" id="mp-sub"></div></div>
+    <button id="mp-toggle" aria-label="Play or pause">▶</button>
+  </div>
+  <div class="sr-only" role="status" id="live"></div>
+  <audio id="audio" preload="metadata"></audio>
+</div>
+<script>
+"use strict";
+/* baked-in podcast directory (fallback) */
+let DIRECTORY = {"Metal & Rock":[{"id":1737976847,"name":"The Metal Roundup","artist":"Steve O'G, Drew Fortune, and METALBIRB","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4d/f4/e5/4df4e580-f456-5fd2-28b8-f2a14ca79727/mza_1634169425663496132.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/f40765bc/podcast/rss"},{"id":78833595,"name":"Talking Metal","artist":"Talking Metal","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/dc/68/3b/dc683b81-a639-07cd-55db-fd56e22f0512/mza_16187401122347136528.jpeg/600x600bb.jpg","feed":"https://rss.art19.com/talking-metal"},{"id":487533355,"name":"Full Metal Jackie","artist":"Full Metal Jackie","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/90/69/ff/9069ff0c-32bb-bee6-ce0e-9bbc05ad2c4b/mza_18273826538948654989.jpg/600x600bb.jpg","feed":"https://feed.podbean.com/fullmetaljackiepodkastplus/feed.xml"},{"id":1674796720,"name":"The Metal Pit Podcast","artist":"The Metal Pit","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/12/c8/2a/12c82abc-8976-3673-a64b-dbc2660b5681/mza_2596562910935056246.png/600x600bb.jpg","feed":"https://media.rss.com/themetalpit/feed.xml"},{"id":1040326358,"name":"That's Not Metal","artist":"That's Not Metal","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c7/8d/15/c78d159c-c54f-5ed1-e790-418c0adab8a4/mza_12966881693945422940.jpg/600x600bb.jpg","feed":"https://www.spreaker.com/show/4254988/episodes/feed"},{"id":113680727,"name":"Metal Blade Records Podcasts","artist":"Metal Blade Records","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/08/89/a1/0889a188-7980-3972-7203-ad589dc2341b/mza_2766256929313540238.jpg/600x600bb.jpg","feed":"https://www.metalblade.com/podcasts/podcast.xml"},{"id":1587174057,"name":"Heavy Metal 101","artist":"Eric Schwartz","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/83/c7/36/83c736cf-033a-0329-5715-30e5bd021f39/mza_14518526329422163014.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/5e24abe0/podcast/rss"},{"id":1350898717,"name":"The Metal Hammer Podcast","artist":"Music @ Future","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/51/4a/4c/514a4c13-58b4-4679-19df-78e7b6c43b5b/mza_14963427490608883056.jpg/600x600bb.jpg","feed":"https://www.spreaker.com/show/5102959/episodes/feed"},{"id":1190284428,"name":"Heavy Metal History","artist":"Dustin K.","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/10/51/aa10512d-4413-003a-4b19-d6f93bd0e428/mza_2662914183960426058.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/f90d8cd0/podcast/rss"},{"id":1440638141,"name":"METAL PODCAST -- Middle-Aged Metal-Heads","artist":"Middle-Aged Metal-Heads","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/ed/24/8c/ed248cb9-d473-84c7-15d9-439c3f226d28/mza_1534903733269819705.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/a8f778/podcast/rss"},{"id":897720614,"name":"The Eddie Trunk Podcast","artist":"SiriusXM","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/40/80/ab408069-559a-f110-9c26-2776b6c19c7d/mza_5595328508797331666.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/ianWG_Vy"},{"id":1751114895,"name":"Metal Massacre","artist":"Metal Massacre","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/4d/fc/934dfc04-724f-a32c-ab71-14dc167639bb/mza_15526647275210529632.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/f74dc270/podcast/rss"}],"True Crime":[{"id":1322200189,"name":"Crime Junkie","artist":"Audiochuck","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/qm_9xx0g"},{"id":1618050230,"name":"True Crime with Kendall Rae","artist":"Mile Higher Media & Audioboom Studios","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/08/83/ae088306-bdd2-d8e9-d7a0-8157876106ac/mza_3960900746207066868.png/600x600bb.jpg","feed":"https://audioboom.com/channels/5074524.rss"},{"id":1464919521,"name":"Dateline NBC","artist":"NBC News","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg","feed":"https://podcastfeeds.nbcnews.com/HL4TzgYC"},{"id":1089216339,"name":"Someone Knows Something","artist":"CBC","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/fe/88/73/fe8873a4-1e13-3f4f-4baa-9b122e980292/mza_198116530583839230.jpg/600x600bb.jpg","feed":"https://www.cbc.ca/podcasting/includes/sks.xml"},{"id":987967575,"name":"20/20","artist":"ABC News","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/81/6c/5d/816c5d57-7c3f-3df9-1557-08e17469dfe4/mza_1433648970787567135.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/ESP3456903052"},{"id":1500927263,"name":"I Survived","artist":"A&E / PodcastOne","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e2/a0/6f/e2a06f57-cfa2-8d47-4044-d6bee8e6428f/mza_7369040238243896400.jpeg/600x600bb.jpg","feed":"https://rss.pdrl.fm/37e95a/rss.art19.com/i-survived"},{"id":998568017,"name":"Casefile True Crime","artist":"Casefile Presents","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg","feed":"https://feeds.acast.com/public/shows/679acff465f74095106abfaa"},{"id":1379959217,"name":"Morbid","artist":"Ash Kelley & Alaina Urquhart","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/78/e9/0e/78e90ee0-567d-1ad8-17a0-17d7c988c4bd/mza_8425901783365617933.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/ohmVlJZQ"},{"id":1628964677,"name":"Serial Killer: A True Crime Podcast","artist":"Unreported Story Society","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/86/fa/bd/86fabda4-18ee-79b5-5ee6-3558a3a111bf/mza_3234317633145884770.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/983887c0/podcast/rss"},{"id":1232009882,"name":"True Crime Obsessed","artist":"True Crime Obsessed","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/69/54/32/69543251-63c2-b450-fd1d-4932b6f0238f/mza_10028551918162705040.png/600x600bb.jpg","feed":"https://rss.pdrl.fm/c5c471/audioboom.com/channels/4929680.rss"},{"id":1239473998,"name":"Appalachian Mysteria","artist":"Kromatic Media","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2e/84/cf/2e84cfd9-2217-c980-bb17-42c8118b6559/mza_3469618646215640897.jpg/600x600bb.jpg","feed":"https://rss.buzzsprout.com/2542915.rss"},{"id":1145089790,"name":"Snapped: Women Who Murder","artist":"Oxygen","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/d4/ef/ff/d4efff91-8a69-ba8a-b5a8-634c029af6ff/mza_14265882527940743554.jpeg/600x600bb.jpg","feed":"https://rss.art19.com/snapped-women-who-murder"}],"Comedy":[{"id":1556032684,"name":"Stand up Comedy","artist":"Stand up comedy","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts124/v4/88/f3/c0/88f3c004-6ba0-e581-35c8-f4bc692ec938/mza_5246233194426696407.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/4ee5e360/podcast/rss"},{"id":1405163532,"name":"Laugh Factory Stand Up Clips","artist":"Laugh Factory","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/a9/40/fe/a940fe04-b35d-956d-1b56-570613220231/mza_10797263125497872996.jpg/600x600bb.jpg","feed":"https://anchor.fm/s/5184fe8/podcast/rss"},{"id":1795483480,"name":"Good Hang with Amy Poehler","artist":"The Ringer","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2b/94/bb/2b94bb6e-44f1-9d57-7748-b7456072806d/mza_1064202164981856225.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/good-hang-with-amy-poehler"},{"id":1557275233,"name":"The Nikki Glaser Podcast","artist":"Big Money Players Network and iHeartPodcasts","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/4b/5d/204b5d97-9dd6-786b-7754-65a30d7a6f76/mza_581018561595420146.jpg/600x600bb.jpg","feed":"https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/0d8967bb-212c-4f2e-85bb-ae2700380ca7/2558cddf-28c7-463d-b70b-ae2700380cc3/podcast.rss"},{"id":1583132133,"name":"The Weekly Show with Jon Stewart","artist":"Comedy Central","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f1/f3/f6/f1f3f6e9-71b2-2965-5b92-a294e04e9646/mza_12649236828332054745.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/BVLLC2163264914"},{"id":1521578868,"name":"SmartLess","artist":"Jason Bateman, Sean Hayes, Will Arnett","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b1/93/5f/b1935f9f-35be-9144-e813-626bd8dabfb4/mza_4132654708551836825.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/hNaFxXpO"},{"id":1712162907,"name":"The Dry Bar Comedy Podcast","artist":"Dry Bar Comedy","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/de/e2/eb/dee2eb80-f450-2d78-a199-2339fddac0b6/mza_12837925330698132920.jpg/600x600bb.jpg","feed":"https://media.rss.com/drybarcomedypodcast/feed.xml"},{"id":1468013270,"name":"2 Bears, 1 Cave with Tom Segura & Bert Kreischer","artist":"YMH Studios","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2a/6b/83/2a6b830c-da57-31f3-9bc6-eb34b56aaaa7/mza_2112252473885241390.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/YMH8516456556"},{"id":1190981360,"name":"This Past Weekend w/ Theo Von","artist":"Theo Von","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9c/f6/5a/9cf65abb-f8db-fb7b-984f-b4276a1e8c85/mza_2107148709996282347.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/thispastweekend"},{"id":1438054347,"name":"Conan O\u2019Brien Needs A Friend","artist":"Team Coco & Earwolf","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/dHoohVNH"}],"News":[{"id":1758855019,"name":"The Headlines","artist":"The New York Times","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fc/8a/52/fc8a527d-8979-adf2-977b-06304a816969/mza_684749869280596722.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/ydACIPHO"},{"id":1222114325,"name":"Up First from NPR","artist":"NPR","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/0e/35/25/0e352569-e694-81d9-ea55-5f935981c15a/mza_1788275989855583986.png/600x600bb.jpg","feed":"https://feeds.npr.org/510318/podcast.xml"},{"id":1576594336,"name":"Morning Wire","artist":"The Daily Wire","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c1/d1/84/c1d184f0-ee90-a43c-f5f7-88f21e8eeccf/mza_14163782799458392314.jpg/600x600bb.jpg","feed":"https://rss.pdrl.fm/3f8a3d/feeds.megaphone.fm/BVDWV8747925072"},{"id":121493675,"name":"NPR News Now","artist":"NPR","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/27/a0/ab/27a0abb7-817f-d80c-4fed-6fd04d424333/mza_16804553558295235422.jpg/600x600bb.jpg","feed":"https://feeds.npr.org/500005/podcast.xml"},{"id":1436719991,"name":"CNN 5 Things","artist":"CNN Podcasts","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b4/bb/35/b4bb3524-380c-7e63-c799-5c0203559cf8/mza_13140286244608796188.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/WMHY2007701094"},{"id":152016440,"name":"WSJ What\u2019s News","artist":"The Wall Street Journal","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/87/e6/62/87e6629b-78fa-7b76-959a-901e020bc5c7/mza_13260730044840862954.jpg/600x600bb.jpg","feed":"https://video-api.shdsvc.dowjones.io/api/podcasts/feed/the%20wall%20street%20journal%20whats%20news"},{"id":1200361736,"name":"The Daily","artist":"The New York Times","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/64/66/ab6466a9-9a7d-e20e-7a3d-bc5be37d29ce/mza_15084852813176276273.jpg/600x600bb.jpg","feed":"https://feeds.simplecast.com/Sl5CSM3S"},{"id":135067274,"name":"Global News Podcast","artist":"BBC World Service","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/84/57/09/8457093f-677a-d6de-5666-6514cc588a7e/mza_17083078915388787537.jpg/600x600bb.jpg","feed":"https://podcasts.files.bbci.co.uk/p02nq0gn.rss"},{"id":1665219519,"name":"Reuters World News","artist":"Reuters","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/37/79/ed/3779ed28-900c-fe28-3fd4-177873c3bba4/mza_6421898793909046859.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/reutersworldnews"}],"History":[{"id":1291579828,"name":"History That Doesn't Suck","artist":"Prof. Greg Jackson","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/73/50/1f/73501fd7-de66-cdfe-d316-334eae92b855/mza_17847109988024788034.jpg/600x600bb.jpg","feed":"https://rss.amperwave.net/v2/feed/audacynetwork/e69da14a26973f1dc761432876205254"},{"id":1537788786,"name":"The Rest Is History","artist":"Goalhanger","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bf/89/a5/bf89a586-3f77-bf37-7ba3-b75f1bca7bfa/mza_1664785978944494824.jpg/600x600bb.jpg","feed":"https://feeds.megaphone.fm/GLT4787413333"},{"id":1493453604,"name":"HISTORY This Week","artist":"The HISTORY\u00ae Channel | Back Pocket Studios","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/91/6b/76/916b767c-19e7-80d8-9030-656987c212a3/mza_17393609274869334876.png/600x600bb.jpg","feed":"https://rss.amperwave.net/v2/feed/audacynetwork/history-this-week"},{"id":283605519,"name":"Stuff You Missed in History Class","artist":"iHeartPodcasts","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/91/6b/89/916b8925-278d-0d3f-4968-ce8112e372be/mza_11125061227071811319.jpg/600x600bb.jpg","feed":"https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/cfb428ef-eafc-44d0-9d09-ae2701747e6f/fb626e1f-112c-4246-a40d-ae2701747e7d/podcast.rss"},{"id":173001861,"name":"Dan Carlin's Hardcore History","artist":"Dan Carlin","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/49/b7/eb/49b7eb32-8f08-6fac-aadb-2f002131fe5f/mza_15196161972010256532.jpg/600x600bb.jpg","feed":"https://feeds.feedburner.com/dancarlin/history?format=xml"},{"id":1237796990,"name":"History Unplugged Podcast","artist":"History Unplugged","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/9e/67/ab9e6750-9610-d24b-0234-df61d09ed798/mza_16497568433485281290.jpg/600x600bb.jpg","feed":"https://www.omnycontent.com/d/playlist/5e27a451-e6e6-4c51-aa03-a7370003783c/f29261d0-2b21-4ca3-8530-b192014643e7/f2485583-8f85-4713-b316-b19201465f8d/podcast.rss"},{"id":1520403988,"name":"The Ancients","artist":"History Hit","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg","feed":"https://access.acast.com/rss/f2925f7a-eb08-471a-9958-387cb5ee6353"},{"id":1313596069,"name":"American History Tellers","artist":"Audible","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/93/37/d8/9337d89a-95d3-8df3-c08a-15408017e408/mza_18105168834619059515.jpeg/600x600bb.jpg","feed":"https://rss.art19.com/american-history-tellers"},{"id":1591095413,"name":"History Daily","artist":"History Daily","art":"https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d5/68/41/d56841ce-7de9-418f-00d7-65cd13ff46e9/mza_11563891843324810278.jpg/600x600bb.jpg","feed":"https://audioboom.com/channels/5162833.rss"}]};
+
+/* ============ state ============ */
+const $ = id => document.getElementById(id);
+const live = msg => { $("live").textContent = ""; requestAnimationFrame(()=>{ $("live").textContent = msg; }); };
+const store = {
+  get subs(){ try{ return JSON.parse(localStorage.getItem("lynxosPodSubs")||"[]"); }catch(e){ return []; } },
+  set subs(v){ localStorage.setItem("lynxosPodSubs", JSON.stringify(v)); syncSubsNative(v); },
+  get voice(){ return localStorage.getItem("lynxosPodVoice") !== "off"; },
+  set voice(v){ localStorage.setItem("lynxosPodVoice", v ? "on" : "off"); },
+  posKey(url){ return "lynxosPodPos:"+url; },
+  getPos(url){ return parseFloat(localStorage.getItem(this.posKey(url))||"0")||0; },
+  setPos(url,t){ try{ localStorage.setItem(this.posKey(url), String(Math.floor(t))); }catch(e){} }
+};
+let current = null; // {show, ep}
+let sleepTimer = null, sleepEnd = 0;
+
+/* ============ voice ============ */
+function speak(text){
+  if(!store.voice) return;
+  try{
+    if(typeof LynxosTts !== "undefined" && LynxosTts.speak){ LynxosTts.speak(text); return; }
+  }catch(e){}
+  try{
+    if("speechSynthesis" in window){
+      speechSynthesis.cancel();
+      speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+  }catch(e){}
+}
+function refreshVoiceBtn(){
+  const b = $("btn-voice");
+  b.setAttribute("aria-pressed", store.voice ? "true" : "false");
+  b.textContent = store.voice ? "On" : "Off";
+}
+$("btn-voice").addEventListener("click", ()=>{
+  store.voice = !store.voice; refreshVoiceBtn();
+  live("Voice announcements " + (store.voice ? "on" : "off"));
+});
+
+/* ============ tabs ============ */
+const panes = { browse:$("pane-browse"), search:$("pane-search"), subs:$("pane-subs"), show:$("pane-show"), player:$("pane-player") };
+function showTab(name){
+  document.querySelectorAll('nav.tabs [role="tab"]').forEach(b=>{
+    b.setAttribute("aria-selected", b.dataset.tab === name ? "true" : "false");
+  });
+  Object.keys(panes).forEach(k=>panes[k].classList.toggle("active", k===name));
+  if(name==="subs") renderSubs();
+  if(name==="player") renderPlayer();
+}
+document.querySelectorAll('nav.tabs [role="tab"]').forEach(b=>{
+  b.addEventListener("click", ()=>showTab(b.dataset.tab));
+});
+$("btn-back").addEventListener("click", ()=>showTab("search"));
+
+/* ============ show directory: remote first, baked-in fallback ============ */
+const DIRECTORY_URL = "https://raw.githubusercontent.com/justinyocum4-code/Lynxos-podcast-app/main/directory.json";
+async function loadDirectory(){
+  try{
+    const r = await fetch(DIRECTORY_URL, {cache:"no-store"});
+    if(r.ok){
+      const d = await r.json();
+      if(d && typeof d === "object" && Object.keys(d).length) { DIRECTORY = d; }
+    }
+  }catch(e){ /* offline or not published yet: keep baked-in */ }
+}
+
+/* ============ browse (directory) ============ */
+let browseCat = Object.keys(DIRECTORY)[0];
+function podcastCard(p){
+  const subs = store.subs;
+  const subbed = subs.some(x=>x.id===p.id);
+  const el = document.createElement("li");
+  el.className = "pod-card";
+  const main = document.createElement("button");
+  main.className = "card-main";
+  main.setAttribute("aria-label","Show episodes of "+(p.name||"podcast"));
+  const art = document.createElement("span");
+  art.className = "art";
+  const img = document.createElement("img");
+  img.alt = ""; img.src = p.art || "";
+  art.appendChild(img);
+  const nm = document.createElement("span");
+  nm.className = "card-name"; nm.textContent = p.name || "Untitled";
+  const sb = document.createElement("span");
+  sb.className = "card-sub"; sb.textContent = p.artist || "";
+  main.appendChild(art); main.appendChild(nm); main.appendChild(sb);
+  main.addEventListener("click", ()=>openShow(p));
+  const bSub = document.createElement("button");
+  bSub.className = "save-btn";
+  bSub.textContent = subbed ? "✓" : "+";
+  bSub.setAttribute("aria-pressed", subbed ? "true" : "false");
+  bSub.setAttribute("aria-label",(subbed?"Saved. ":"Save ")+(p.name||"podcast"));
+  bSub.addEventListener("click", ev=>{
+    ev.stopPropagation();
+    if(bSub.getAttribute("aria-pressed")==="true") return;
+    const ss = store.subs;
+    ss.push({id:p.id,name:p.name,art:p.art,feed:p.feed,artist:p.artist});
+    store.subs = ss;
+    bSub.textContent = "✓";
+    bSub.setAttribute("aria-pressed","true");
+    bSub.setAttribute("aria-label","Saved. "+(p.name||"podcast"));
+    live((p.name||"Podcast")+" saved to My Podcasts.");
+  });
+  el.appendChild(main); el.appendChild(bSub);
+  return el;
+}
+function renderBrowse(){
+  const chips = $("catchips");
+  chips.innerHTML = "";
+  Object.keys(DIRECTORY).forEach(cat=>{
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = cat;
+    b.setAttribute("aria-pressed", cat===browseCat ? "true" : "false");
+    b.setAttribute("aria-label","Show "+cat+" podcasts");
+    b.addEventListener("click", ()=>{ browseCat = cat; renderBrowse(); live(cat+" podcasts."); });
+    chips.appendChild(b);
+  });
+  const box = $("browse");
+  box.innerHTML = "";
+  DIRECTORY[browseCat].forEach(p=>box.appendChild(podcastCard(p)));
+}
+const _showTab = showTab;
+showTab = function(name){
+  _showTab(name);
+  if(name==="browse") renderBrowse();
+};
+
+/* ============ search (iTunes, free, no key) ============ */
+function fmtNum(n){ return (n||0).toLocaleString(); }
+$("btn-search").addEventListener("click", doSearch);
+$("q").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
+async function doSearch(){
+  const term = $("q").value.trim();
+  if(!term){ live("Type something to search for."); return; }
+  const box = $("results");
+  box.innerHTML = '<div class="empty">Searching…</div>';
+  live("Searching for "+term);
+  try{
+    const r = await fetch("https://itunes.apple.com/search?term="+encodeURIComponent(term)+"&media=podcast&entity=podcast&limit=25");
+    const d = await r.json();
+    const items = (d.results||[]).filter(x=>x.feedUrl);
+    if(!items.length){ box.innerHTML = '<div class="empty">No podcasts found. Try different words.</div>'; live("No results."); return; }
+    const subs = store.subs;
+    box.innerHTML = "";
+    items.forEach(p=>{
+      const subbed = subs.some(s=>s.id===p.collectionId);
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML =
+        '<img alt="" src="'+p.artworkUrl600+'">' +
+        '<div class="info"><div class="t"></div><div class="s"></div></div>' +
+        '<div class="actions"></div>';
+      el.querySelector(".t").textContent = p.collectionName || "Untitled";
+      el.querySelector(".s").textContent = (p.artistName||"") + (p.primaryGenreName ? " • "+p.primaryGenreName : "");
+      const acts = el.querySelector(".actions");
+      const bEp = document.createElement("button");
+      bEp.className = "gold"; bEp.textContent = "Episodes";
+      bEp.setAttribute("aria-label","Show episodes of "+(p.collectionName||"podcast"));
+      bEp.addEventListener("click", ()=>openShow({id:p.collectionId,name:p.collectionName,art:p.artworkUrl600,feed:p.feedUrl,artist:p.artistName}));
+      const bSub = document.createElement("button");
+      bSub.className = "ghost"; bSub.textContent = subbed ? "Saved ✓" : "Save";
+      bSub.setAttribute("aria-label",(subbed?"Remove ":"Save ")+(p.collectionName||"podcast"));
+      bSub.disabled = subbed;
+      if(!subbed) bSub.addEventListener("click", ()=>{
+        const s = store.subs;
+        s.push({id:p.collectionId,name:p.collectionName,art:p.artworkUrl600,feed:p.feedUrl,artist:p.artistName});
+        store.subs = s;
+        bSub.textContent = "Saved ✓"; bSub.disabled = true;
+        live((p.collectionName||"Podcast")+" saved to My Podcasts.");
+      });
+      acts.appendChild(bEp); acts.appendChild(bSub);
+      box.appendChild(el);
+    });
+    live(items.length+" podcasts found.");
+  }catch(e){
+    box.innerHTML = '<div class="err">Search failed. Check your connection and try again.</div>';
+    live("Search failed.");
+  }
+}
+
+/* ============ subscriptions ============ */
+function renderSubs(){
+  const box = $("subs");
+  const subs = store.subs;
+  if(!subs.length){
+    box.innerHTML = '<div class="empty">Nothing saved yet.<br>Search for a podcast and tap Save.</div>';
+    return;
+  }
+  box.innerHTML = "";
+  subs.forEach(p=>{
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = '<img alt=""><div class="info"><div class="t"></div><div class="s"></div></div><div class="actions"></div>';
+    el.querySelector("img").src = p.art || "";
+    el.querySelector(".t").textContent = p.name || "Untitled";
+    el.querySelector(".s").textContent = p.artist || "";
+    const acts = el.querySelector(".actions");
+    const bEp = document.createElement("button");
+    bEp.className = "gold"; bEp.textContent = "Episodes";
+    bEp.setAttribute("aria-label","Show episodes of "+(p.name||"podcast"));
+    bEp.addEventListener("click", ()=>openShow(p));
+    const bRm = document.createElement("button");
+    bRm.className = "ghost"; bRm.textContent = "Remove";
+    bRm.setAttribute("aria-label","Remove "+(p.name||"podcast"));
+    bRm.addEventListener("click", ()=>{
+      store.subs = store.subs.filter(s=>s.id!==p.id);
+      live((p.name||"Podcast")+" removed."); renderSubs();
+    });
+    acts.appendChild(bEp); acts.appendChild(bRm);
+    box.appendChild(el);
+  });
+}
+
+/* ============ episodes (rss2json, free) ============ */
+function fmtDur(sec){
+  sec = parseInt(sec,10); if(!sec||sec<0) return "";
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60);
+  return h ? h+"h "+m+"m" : m+" min";
+}
+function fmtDate(d){
+  try{ return new Date(d).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}); }
+  catch(e){ return ""; }
+}
+async function openShow(p){
+  showTab("show");
+  const box = $("show");
+  box.innerHTML =
+    '<div class="showhead"><img alt="" src="'+(p.art||"")+'"><div><div class="t"></div><div class="s"></div></div></div>' +
+    '<div class="subrow" style="margin-bottom:12px"></div>' +
+    '<div class="empty">Loading episodes…</div>';
+  box.querySelector(".t").textContent = p.name || "Podcast";
+  box.querySelector(".s").textContent = p.artist || "";
+  (function(){
+    const subbed = store.subs.some(x=>x.id===p.id);
+    const b = document.createElement("button");
+    b.className = "gold"; b.style.width = "100%";
+    b.textContent = subbed ? "Subscribed ✓" : "Subscribe";
+    b.setAttribute("aria-label",(subbed?"Subscribed to ":"Subscribe to ")+(p.name||"podcast"));
+    b.setAttribute("aria-pressed", subbed ? "true" : "false");
+    b.addEventListener("click", ()=>{
+      if(b.getAttribute("aria-pressed")==="true"){
+        store.subs = store.subs.filter(x=>x.id!==p.id);
+        b.textContent = "Subscribe"; b.setAttribute("aria-pressed","false");
+        b.setAttribute("aria-label","Subscribe to "+(p.name||"podcast"));
+        live((p.name||"Podcast")+" removed from My Podcasts.");
+      } else {
+        const ss = store.subs;
+        ss.push({id:p.id,name:p.name,art:p.art,feed:p.feed,artist:p.artist});
+        store.subs = ss;
+        b.textContent = "Subscribed ✓"; b.setAttribute("aria-pressed","true");
+        b.setAttribute("aria-label","Subscribed to "+(p.name||"podcast"));
+        live((p.name||"Podcast")+" saved to My Podcasts.");
+      }
+    });
+    box.querySelector(".subrow").appendChild(b);
+  })();
+  live("Loading episodes for "+(p.name||"podcast"));
+  try{
+    const r = await fetch("https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(p.feed));
+    const d = await r.json();
+    const items = (d.items||[]).filter(x=>x.enclosure && (x.enclosure.link || x.enclosure.url));
+    if(!items.length){
+      box.querySelector(".empty").textContent = "No playable episodes found.";
+      live("No episodes found."); return;
+    }
+    const list = document.createElement("div");
+    items.forEach(ep=>{
+      const url = String(ep.enclosure.link || ep.enclosure.url || "").replace(/&amp;/g, "&");
+      const dur = ep.duration || ep.enclosure.duration;
+      const pos = store.getPos(url);
+      const el = document.createElement("div");
+      el.className = "ep";
+      el.innerHTML = '<div class="t"></div><div class="m"></div><div class="row"></div>';
+      el.querySelector(".t").textContent = ep.title || "Untitled episode";
+      el.querySelector(".m").textContent =
+        [fmtDate(ep.pubDate), fmtDur(dur)].filter(Boolean).join(" • ") +
+        (pos>10 ? " • resumes at "+Math.floor(pos/60)+":"+String(Math.floor(pos%60)).padStart(2,"0") : "");
+      const bPlay = document.createElement("button");
+      bPlay.className = "gold"; bPlay.textContent = pos>10 ? "Resume" : "Play";
+      bPlay.setAttribute("aria-label","Play "+(ep.title||"episode"));
+      bPlay.addEventListener("click", ()=>playEpisode(p, {title:ep.title,url:url}));
+      el.querySelector(".row").appendChild(bPlay);
+      list.appendChild(el);
+    });
+    box.querySelector(".empty").remove();
+    box.appendChild(list);
+    live(items.length+" episodes loaded.");
+  }catch(e){
+    box.querySelector(".empty").outerHTML = '<div class="err">Could not load episodes. Try again later.</div>';
+    live("Could not load episodes.");
+  }
+}
+
+/* ============ player ============ */
+const audio = $("audio");
+function playEpisode(show, ep){
+  current = {show:show, ep:ep};
+  audio.src = ep.url;
+  const pos = store.getPos(ep.url);
+  audio.play().then(()=>{
+    if(pos>10){ audio.currentTime = pos; }
+  }).catch(()=>{});
+  renderPlayer(); updateMini();
+  speak("Playing "+ep.title);
+  live("Playing "+ep.title);
+}
+audio.addEventListener("play", updateMini);
+audio.addEventListener("pause", ()=>{ updateMini(); clearSleep(); });
+audio.addEventListener("ended", ()=>{ clearSleep(); live("Episode finished."); });
+audio.addEventListener("timeupdate", ()=>{
+  if(current && !audio.paused && Math.floor(audio.currentTime)%10===0){
+    store.setPos(current.ep.url, audio.currentTime);
+  }
+  const s = $("seek");
+  if(s && audio.duration){ s.value = Math.floor(audio.currentTime); s.max = Math.floor(audio.duration); }
+  const t = $("time-lab");
+  if(t && audio.duration){
+    t.textContent = fmtClock(audio.currentTime)+" / "+fmtClock(audio.duration);
+  }
+});
+function fmtClock(s){
+  s = Math.floor(s||0);
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h? h+":" : "") + String(m).padStart(h?2:1,"0") + ":" + String(x).padStart(2,"0");
+}
+function updateMini(){
+  const mp = $("miniplayer");
+  if(!current){ mp.classList.remove("show"); return; }
+  mp.classList.add("show");
+  $("mp-title").textContent = current.ep.title || "Episode";
+  $("mp-sub").textContent = current.show.name || "";
+  $("mp-toggle").textContent = audio.paused ? "▶" : "⏸";
+  $("mp-toggle").setAttribute("aria-label", audio.paused ? "Play" : "Pause");
+}
+$("mp-toggle").addEventListener("click", ()=>{
+  if(!current) return;
+  if(audio.paused) audio.play(); else audio.pause();
+});
+$("miniplayer").querySelector(".mt").addEventListener("click", ()=>showTab("player"));
+
+const SPEEDS = [1,1.25,1.5,1.75,2];
+let speedIx = 0;
+function renderPlayer(){
+  const box = $("nowplaying");
+  if(!current){
+    box.innerHTML = '<div class="empty">Nothing playing yet.<br>Find a podcast, open its episodes, and tap Play.</div>';
+    return;
+  }
+  box.innerHTML =
+    '<div class="playerbox">' +
+      '<img alt="" src="'+(current.show.art||"")+'">' +
+      '<div class="t"></div><div class="s"></div>' +
+      '<input type="range" id="seek" value="0" min="0" max="100" step="1" aria-label="Seek">' +
+      '<div class="m" id="time-lab" style="color:var(--muted)">0:00 / 0:00</div>' +
+      '<div class="transport">' +
+        '<button id="t-back" aria-label="Back 15 seconds">⏪<br><span style="font-size:13px">15</span></button>' +
+        '<button id="t-play" class="big" aria-label="Play or pause">⏸</button>' +
+        '<button id="t-fwd" aria-label="Forward 30 seconds">⏩<br><span style="font-size:13px">30</span></button>' +
+      '</div>' +
+      '<div class="timerow">' +
+        '<button id="t-speed" aria-label="Playback speed">Speed 1×</button>' +
+        '<button data-sleep="0" aria-pressed="true" aria-label="Sleep timer off">No timer</button>' +
+        '<button data-sleep="15" aria-pressed="false" aria-label="Sleep in 15 minutes">15m</button>' +
+        '<button data-sleep="30" aria-pressed="false" aria-label="Sleep in 30 minutes">30m</button>' +
+        '<button data-sleep="60" aria-pressed="false" aria-label="Sleep in 60 minutes">60m</button>' +
+      '</div>' +
+    '</div>';
+  box.querySelector(".t").textContent = current.ep.title || "Episode";
+  box.querySelector(".s").textContent = current.show.name || "";
+  $("t-play").textContent = audio.paused ? "▶" : "⏸";
+  $("seek").addEventListener("change", e=>{ audio.currentTime = parseInt(e.target.value,10)||0; });
+  $("t-play").addEventListener("click", ()=>{
+    if(audio.paused){ audio.play(); $("t-play").textContent="⏸"; }
+    else { audio.pause(); $("t-play").textContent="▶"; }
+  });
+  $("t-back").addEventListener("click", ()=>{ audio.currentTime = Math.max(0,audio.currentTime-15); });
+  $("t-fwd").addEventListener("click", ()=>{ audio.currentTime = Math.min(audio.duration||Infinity,audio.currentTime+30); });
+  $("t-speed").addEventListener("click", e=>{
+    speedIx = (speedIx+1)%SPEEDS.length;
+    audio.playbackRate = SPEEDS[speedIx];
+    e.target.textContent = "Speed "+SPEEDS[speedIx]+"×";
+    live("Speed "+SPEEDS[speedIx]+" times.");
+  });
+  box.querySelectorAll("[data-sleep]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      box.querySelectorAll("[data-sleep]").forEach(x=>x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+      setSleep(parseInt(b.dataset.sleep,10));
+    });
+  });
+}
+function setSleep(mins){
+  clearTimeout(sleepTimer); sleepTimer = null;
+  if(mins>0){
+    sleepEnd = Date.now()+mins*60000;
+    sleepTimer = setTimeout(()=>{
+      audio.pause();
+      speak("Sleep timer done.");
+      live("Sleep timer ended. Paused.");
+    }, mins*60000);
+    live("Sleep timer set for "+mins+" minutes.");
+  } else live("Sleep timer off.");
+}
+function clearSleep(){
+  if(sleepTimer && audio.paused){ clearTimeout(sleepTimer); sleepTimer=null; }
+}
+
+/* media session (lock screen / bluetooth) */
+try{
+  if("mediaSession" in navigator){
+    navigator.mediaSession.setActionHandler("play", ()=>audio.play());
+    navigator.mediaSession.setActionHandler("pause", ()=>audio.pause());
+    navigator.mediaSession.setActionHandler("seekbackward", ()=>{ audio.currentTime=Math.max(0,audio.currentTime-15); });
+    navigator.mediaSession.setActionHandler("seekforward", ()=>{ audio.currentTime+=(30); });
+  }
+}catch(e){}
+
+/* ============ new-episode alerts ============ */
+function alertsOn(){ return localStorage.getItem("lynxosPodAlerts")==="on"; }
+function refreshAlertsBtn(){
+  const b = $("btn-alerts");
+  const on = alertsOn();
+  b.setAttribute("aria-pressed", on ? "true" : "false");
+  b.textContent = on ? "On" : "Off";
+}
+$("btn-alerts").addEventListener("click", async ()=>{
+  if(alertsOn()){
+    localStorage.setItem("lynxosPodAlerts","off");
+    refreshAlertsBtn(); live("New episode alerts off.");
+    return;
+  }
+  let perm = "granted";
+  try{
+    if("Notification" in window && Notification.permission !== "granted"){
+      perm = await Notification.requestPermission();
+    }
+  }catch(e){}
+  localStorage.setItem("lynxosPodAlerts","on");
+  refreshAlertsBtn();
+  live("New episode alerts on." + (perm!=="granted" ? " System notifications blocked, but new episodes will still be listed in the app." : ""));
+  checkNewEpisodes(true);
+});
+function showNewBanner(found){
+  const box = $("neweps");
+  if(!found.length){ box.innerHTML = ""; return; }
+  const el = document.createElement("div");
+  el.className = "ep";
+  el.style.borderColor = "var(--gold)";
+  const t = document.createElement("div");
+  t.className = "t"; t.style.color = "var(--gold)";
+  t.textContent = found.length===1 ? "1 new episode" : found.length+" new episodes";
+  el.appendChild(t);
+  found.forEach(f=>{
+    const row = document.createElement("div");
+    row.className = "m"; row.textContent = f.show+": "+f.title;
+    el.appendChild(row);
+  });
+  const b = document.createElement("button");
+  b.className = "ghost"; b.textContent = "Dismiss";
+  b.setAttribute("aria-label","Dismiss new episode notices");
+  b.addEventListener("click", ()=>{ box.innerHTML=""; });
+  el.appendChild(b);
+  box.innerHTML = ""; box.appendChild(el);
+}
+async function checkNewEpisodes(manual){
+  const subs = store.subs;
+  if(!subs.length) return;
+  const found = [];
+  for(const sub of subs){
+    try{
+      const r = await fetch("https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(sub.feed));
+      const d = await r.json();
+      const items = d.items||[];
+      if(!items.length) continue;
+      const latest = items[0];
+      const pub = latest.pubDate || "";
+      const key = "lynxosPodLastSeen:"+sub.feed;
+      const seen = localStorage.getItem(key);
+      if(seen && pub && new Date(pub) > new Date(seen)){
+        found.push({show:sub.name||"Podcast", title:latest.title||"New episode", feed:sub.feed});
+      }
+      if(pub && (!seen || new Date(pub) > new Date(seen))) localStorage.setItem(key, pub);
+    }catch(e){ /* one feed failing must not stop the rest */ }
+  }
+  if(found.length){
+    showNewBanner(found);
+    const msg = found.length===1
+      ? "New episode from "+found[0].show+": "+found[0].title
+      : found.length+" new podcast episodes available.";
+    live(msg); speak(msg);
+    if(alertsOn()){
+      try{
+        if("Notification" in window && Notification.permission==="granted"){
+          new Notification("Lynxos Podcasts", {body:msg});
+        }
+      }catch(e){}
+    }
+  } else if(manual){
+    live("No new episodes. You're all caught up.");
+  }
+}
+
+/* ============ battery optimization exemption ============ */
+$("btn-batt").addEventListener("click", ()=>{
+  const isAndroid = /Android/i.test(navigator.userAgent||"");
+  try{
+    if(window.LynxosBattery && typeof window.LynxosBattery.requestExemption==="function"){
+      window.LynxosBattery.requestExemption();
+      speak("Opening the battery prompt. Choose allow so your podcast keeps playing with the screen off.");
+      live("Battery prompt opened. Choose allow.");
+      return;
+    }
+  }catch(e){}
+  if(isAndroid){
+    window.location.href = "intent:#Intent;action=android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS;end";
+    speak("Opening battery settings. Find your browser or this app, tap Battery, and choose Unrestricted.");
+  } else {
+    speak("Open your phone's Settings. Tap Apps, find your browser. Tap Battery. Choose Unrestricted.");
+  }
+  live("Follow the spoken steps to turn off battery optimization.");
+});
+
+/* sync subscriptions to the native background checker (APK only) */
+function syncSubsNative(v){
+  try{
+    if(window.LynxosStore && v){
+      LynxosStore.set("pod_subs", JSON.stringify(v.map(x=>({name:x.name, feed:x.feed}))));
+    }
+  }catch(e){}
+}
+
+/* ============ init ============ */
+refreshVoiceBtn();
+refreshAlertsBtn();
+syncSubsNative(store.subs);
+loadDirectory().then(()=>{ renderBrowse(); });
+checkNewEpisodes(false);
+try{
+  if("mediaSession" in navigator && current===null){ /* noop */ }
+}catch(e){}
+live("Lynxos Podcasts ready.");
+</script>
+</body>
+</html>
