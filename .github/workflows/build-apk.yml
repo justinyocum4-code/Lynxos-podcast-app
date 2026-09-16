@@ -1,4 +1,4 @@
-
+ 
 name: Build APK
 
 on:
@@ -444,4 +444,73 @@ jobs:
                           nm.createNotificationChannel(ch);
                       }
                       Intent open = new Intent(ctx, MainActivity.class);
-   
+                      open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                      PendingIntent pi = PendingIntent.getActivity(ctx, 0, open,
+                              PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                      Notification.Builder nb = Build.VERSION.SDK_INT >= 26
+                              ? new Notification.Builder(ctx, CHANNEL_ID)
+                              : new Notification.Builder(ctx);
+                      nb.setContentTitle(title)
+                        .setContentText(text)
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setContentIntent(pi)
+                        .setAutoCancel(true);
+                      nm.notify(1001, nb.build());
+                  } catch (Exception ignored) {}
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/lynxospodcasts/app/BootReceiver.java <<'EOF'
+          package com.lynxospodcasts.app;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+
+          public class BootReceiver extends BroadcastReceiver {
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+                      EpisodeCheckReceiver.schedule(context.getApplicationContext());
+                  }
+              }
+          }
+          EOF
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build release APK (unsigned)
+        run: gradle :app:assembleRelease
+
+      - name: Sign release APK with the Lynxos key
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/lynxos-release.p12
+          "$APKSIGNER" sign --ks /tmp/lynxos-release.p12 --ks-type PKCS12 \
+            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --out app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          rm -f /tmp/lynxos-release.p12
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk | head -3
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lynxos-podcasts-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Publish GitHub release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION_NAME }}+${{ env.APP_VERSION_CODE }}
+          name: v${{ env.APP_VERSION_NAME }}+${{ env.APP_VERSION_CODE }}
+          body: ${{ env.APP_RELEASE_NOTES }}
+          files: app/build/outputs/apk/release/app-release.apk
